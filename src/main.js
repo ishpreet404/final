@@ -244,9 +244,9 @@ class GameScene extends Phaser.Scene {
         this.gate = this.physics.add.sprite(1570, 310, 'gateClose');
         this.gate.body.setImmovable(true);
         this.gate.body.setGravityY(0);
-        // Set collision box to be wider and positioned at the very base for better standing
-        this.gate.body.setSize(140, 20); // Wider and shorter collision box for better floor standing
-        this.gate.body.setOffset(10, 80); // Position collision box at the very bottom of the gate
+        // Set collision box to be much wider and positioned at the very base for easier landing
+        this.gate.body.setSize(200, 30); // Much wider and slightly taller collision box for easier standing
+        this.gate.body.setOffset(-30, 75); // Position collision box at the very bottom, extending beyond gate edges
         this.gate.setVisible(false); // Hidden initially
         
         // Create UI (hidden initially)
@@ -408,38 +408,43 @@ class GameScene extends Phaser.Scene {
     
     createClouds() {
         // Simplified cloud layout - 8 large clouds forming clear upward path from bottom-left to top-right
+        // Updated with collision areas that match the full visual cloud sizes
         const cloudData = [
             // Starting cloud - bottom left
-            { x: 200, y: 850, type: 'cloud1', size: { w: 180, h: 60 } },
+            { x: 200, y: 850, type: 'cloud1', display: { w: 180, h: 60 }, collision: { w: 175, h: 25 } },
             
             // Second cloud - step up and right
-            { x: 450, y: 750, type: 'cloud2', size: { w: 170, h: 55 } },
+            { x: 450, y: 750, type: 'cloud2', display: { w: 170, h: 55 }, collision: { w: 165, h: 25 } },
             
             // Third cloud - continue upward path
-            { x: 700, y: 650, type: 'cloud3', size: { w: 175, h: 60 } },
+            { x: 700, y: 650, type: 'cloud3', display: { w: 175, h: 60 }, collision: { w: 170, h: 25 } },
             
             // Fourth cloud - center area with key
-            { x: 800, y: 550, type: 'cloud1', size: { w: 180, h: 65 } },
+            { x: 800, y: 550, type: 'cloud1', display: { w: 180, h: 65 }, collision: { w: 175, h: 25 } },
             
             // Fifth cloud - continue climbing
-            { x: 1000, y: 450, type: 'cloud2', size: { w: 170, h: 55 } },
+            { x: 1000, y: 450, type: 'cloud2', display: { w: 170, h: 55 }, collision: { w: 165, h: 25 } },
             
             // Sixth cloud - approach final area
-            { x: 1200, y: 350, type: 'cloud3', size: { w: 175, h: 60 } },
+            { x: 1200, y: 350, type: 'cloud3', display: { w: 175, h: 60 }, collision: { w: 170, h: 25 } },
             
             // Seventh cloud - pre-final platform
-            { x: 1350, y: 280, type: 'cloud1', size: { w: 160, h: 55 } },
+            { x: 1350, y: 280, type: 'cloud1', display: { w: 160, h: 55 }, collision: { w: 155, h: 25 } },
             
             // Final cloud - top right with gate
-            { x: 1500, y: 250, type: 'cloud2', size: { w: 180, h: 65 } }
+            { x: 1500, y: 250, type: 'cloud2', display: { w: 180, h: 65 }, collision: { w: 175, h: 25 } }
         ];
         
         cloudData.forEach(data => {
             const cloud = this.physics.add.sprite(data.x, data.y, data.type);
             cloud.setImmovable(true);
             cloud.body.setGravityY(0);
-            cloud.setDisplaySize(data.size.w, data.size.h);
-            cloud.body.setSize(data.size.w, data.size.h);
+            // Set visual display size
+            cloud.setDisplaySize(data.display.w, data.display.h);
+            // Set collision body size to match almost the full width of the cloud image
+            cloud.body.setSize(data.collision.w, data.collision.h);
+            // Position collision box at the top portion of the cloud for natural standing
+            cloud.body.setOffset((data.display.w - data.collision.w) / 2, data.display.h - data.collision.h - 5);
             cloud.disappearTimer = -1; // -1 means not activated
             cloud.originalAlpha = 1;
             cloud.isSolid = true;
@@ -595,8 +600,7 @@ class GameScene extends Phaser.Scene {
         // Only update game logic during PLAYING state
         if (this.gameState !== 'PLAYING') return;
         
-        if (this.levelComplete) return;
-        
+        // Continue updating player physics even during level completion to prevent falling
         // Update invulnerability
         if (this.invulnerable) {
             this.invulnerabilityTimer -= deltaSeconds;
@@ -604,18 +608,24 @@ class GameScene extends Phaser.Scene {
             
             if (this.invulnerabilityTimer <= 0) {
                 this.invulnerable = false;
-                this.player.setAlpha(1);
+                this.player.setAlpha(1); // Ensure full opacity when invulnerability ends
             }
+        } else {
+            // Ensure player is always fully visible when not invulnerable
+            this.player.setAlpha(1);
         }
         
-        // Handle input and movement
+        // Handle input and movement (continue even during level completion)
         this.handleInput(deltaSeconds);
         
         // Update shield state
         this.updateShield();
         
-        // Update player physics
+        // Update player physics (ALWAYS update to prevent falling)
         this.updatePlayer(deltaSeconds);
+        
+        // Skip other updates if level is complete, but keep player physics running
+        if (this.levelComplete) return;
         
         // Update gems floating animation
         this.updateGems(deltaSeconds);
@@ -664,9 +674,9 @@ class GameScene extends Phaser.Scene {
             this.isShielding = false;
         }
         
-        // Movement (disabled when shielding)
+        // Movement (disabled when shielding, but allow during level completion to maintain position)
         if (!this.isShielding) {
-            // Horizontal movement
+            // Horizontal movement - allow even during level completion
             if (inputX !== 0) {
                 const targetVelocityX = inputX * this.PLAYER_SPEED;
                 const currentVelocityX = this.player.body.velocity.x;
@@ -691,7 +701,7 @@ class GameScene extends Phaser.Scene {
                 }
             }
             
-            // Jumping
+            // Jumping - allow during level completion to maintain grounded state
             if (inputY < -0.5 && this.player.isGrounded) {
                 this.player.body.setVelocityY(this.JUMP_VELOCITY);
                 this.player.isGrounded = false;
@@ -739,18 +749,23 @@ class GameScene extends Phaser.Scene {
             }
         });
         
-        // Check collision with gate (player can stand on it)
-        if (this.gate && this.physics.overlap(this.player, this.gate)) {
+        // Check collision with gate (player can stand on it) - always allow standing regardless of gate state
+        if (this.gate && this.gate.visible && this.physics.overlap(this.player, this.gate)) {
             const playerBottom = this.player.y + this.player.body.height / 2;
             const gateTop = this.gate.y - this.gate.body.height / 2;
             
-            if (playerBottom <= gateTop + 10 && this.player.body.velocity.y >= 0) {
+            if (playerBottom <= gateTop + 15 && this.player.body.velocity.y >= 0) {
                 this.player.isGrounded = true;
                 this.player.y = gateTop - this.player.body.height / 2;
                 this.player.body.setVelocityY(0);
                 
                 // Update last position when standing on gate
                 this.lastCloudPosition = { x: this.gate.x, y: this.gate.y };
+                
+                // Check for level completion while standing on gate
+                if (this.hasKey && this.gateOpen && !this.levelComplete) {
+                    this.completeLevel();
+                }
             }
         }
         
@@ -900,10 +915,8 @@ class GameScene extends Phaser.Scene {
             this.collectKey();
         }
         
-        // Gate entry - only works if player has the key
-        if (this.hasKey && this.gateOpen && this.physics.overlap(this.player, this.gate)) {
-            this.completeLevel();
-        }
+        // Gate entry is now handled in updatePlayer() to avoid interference with standing collision
+        // This prevents the player from falling through the gate when level completion triggers
         
         // Fireball collisions
         this.fireballs.children.entries.forEach(fireball => {
