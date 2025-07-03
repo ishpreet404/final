@@ -19,8 +19,9 @@ class GameScene extends Phaser.Scene {
         this.healthBars = null;
         
         // Game mechanics
-        this.playerHealth = 3;
-        this.shieldHealth = 3;
+        this.playerHealth = 3; // Player dies after 3 unshielded hits
+        this.shieldHealth = 3; // Shield blocks 3 hits before breaking
+        this.maxShieldHealth = 3; // Maximum shield health
         this.isShielding = false;
         this.hasKey = false;
         this.gateOpen = false;
@@ -85,7 +86,7 @@ class GameScene extends Phaser.Scene {
         this.sun.setScale(0.8);
         
         // Create player at bottom-left cloud start position
-        this.player = this.physics.add.sprite(200, 780, 'player');
+        this.player = this.physics.add.sprite(200, 820, 'player');
         this.player.setDisplaySize(48, 72); // Increased from 32x48
         this.player.body.setSize(36, 66); // Increased hitbox proportionally
         this.player.setCollideWorldBounds(false);
@@ -111,6 +112,9 @@ class GameScene extends Phaser.Scene {
         this.gate = this.physics.add.sprite(1500, 220, 'gateClose');
         this.gate.body.setImmovable(true);
         this.gate.body.setGravityY(0);
+        // Set collision box to be wider and at the base of the gate for better platform collision
+        this.gate.body.setSize(120, 40); // Width and height of collision box
+        this.gate.body.setOffset(20, 60); // Position collision box at the base
         
         // Create UI
         this.createUI();
@@ -422,6 +426,21 @@ class GameScene extends Phaser.Scene {
             }
         });
         
+        // Check collision with gate (player can stand on it)
+        if (this.gate && this.physics.overlap(this.player, this.gate)) {
+            const playerBottom = this.player.y + this.player.body.height / 2;
+            const gateTop = this.gate.y - this.gate.body.height / 2;
+            
+            if (playerBottom <= gateTop + 10 && this.player.body.velocity.y >= 0) {
+                this.player.isGrounded = true;
+                this.player.y = gateTop - this.player.body.height / 2;
+                this.player.body.setVelocityY(0);
+                
+                // Update last position when standing on gate
+                this.lastCloudPosition = { x: this.gate.x, y: this.gate.y };
+            }
+        }
+        
         // Check collision with ground (bottom of screen area)
         if (this.player.y >= 1000 && this.player.body.velocity.y >= 0) {
             this.player.isGrounded = true;
@@ -499,37 +518,58 @@ class GameScene extends Phaser.Scene {
     }
     
     spawnFireball() {
-        // Spawn fireballs at sun position, raining at 45-degree angle like rain
+        // Spawn fireballs at sun position, aimed directly at cloud positions with physics prediction
         const sunX = 1700;
         const sunY = 100;
         
-        // Rain at 45-degree angle (down and to the left)
-        // 45 degrees = π/4 radians = -135 degrees from positive x-axis
-        const rainAngle = -Math.PI * 3/4; // -135 degrees (down-left)
-        const rainSpeed = 300; // Base speed for rain effect
+        // Target random cloud positions to threaten the climbing path
+        const cloudTargets = [
+            { x: 200, y: 850 },   // Starting cloud
+            { x: 450, y: 750 },   // Second cloud
+            { x: 700, y: 650 },   // Third cloud
+            { x: 800, y: 550 },   // Fourth cloud (key)
+            { x: 1000, y: 450 },  // Fifth cloud
+            { x: 1200, y: 350 },  // Sixth cloud
+            { x: 1350, y: 280 },  // Seventh cloud
+            { x: 1500, y: 250 }   // Final cloud (gate)
+        ];
         
-        // Calculate velocity components for 45-degree rain
-        const baseVelocityX = Math.cos(rainAngle) * rainSpeed; // Negative (leftward)
-        const baseVelocityY = Math.sin(rainAngle) * rainSpeed; // Positive (downward)
+        // Randomly select a cloud to target
+        const target = cloudTargets[Math.floor(Math.random() * cloudTargets.length)];
         
-        // Add small random variation to create natural rain spread
-        const spreadFactor = 0.2;
-        const velocityX = baseVelocityX + (Math.random() - 0.5) * rainSpeed * spreadFactor;
-        const velocityY = baseVelocityY + (Math.random() - 0.5) * rainSpeed * spreadFactor * 0.5; // Less Y variation
+        // Calculate distance to target
+        const deltaX = target.x - sunX;
+        const deltaY = target.y - sunY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         
-        // Spawn at sun position with random horizontal spread
-        const spawnSpreadX = Phaser.Math.Between(-100, 50); // Wider spread for rain effect
-        const spawnSpreadY = Phaser.Math.Between(-20, 20);
-        const fireball = this.fireballs.create(sunX + spawnSpreadX, sunY + spawnSpreadY, 'fireball');
+        // Calculate time to reach target (accounting for gravity)
+        const initialSpeed = 400;
+        const timeToTarget = distance / initialSpeed;
         
-        // Set rain velocity
-        fireball.body.setVelocity(velocityX, velocityY);
-        fireball.body.setGravityY(0); // No additional gravity for rain effect
+        // Calculate initial velocity components to hit the target
+        // Account for gravity affecting Y trajectory
+        const velocityX = deltaX / timeToTarget;
+        const velocityY = (deltaY - 0.5 * this.FIREBALL_GRAVITY * timeToTarget * timeToTarget) / timeToTarget;
+        
+        // Add small random spread (±10% of velocity for slight inaccuracy)
+        const spreadFactor = 0.1;
+        const finalVelocityX = velocityX + (Math.random() - 0.5) * Math.abs(velocityX) * spreadFactor;
+        const finalVelocityY = velocityY + (Math.random() - 0.5) * Math.abs(velocityY) * spreadFactor;
+        
+        // Spawn at sun position with small offset
+        const offsetX = Phaser.Math.Between(-20, 20);
+        const offsetY = Phaser.Math.Between(-10, 10);
+        const fireball = this.fireballs.create(sunX + offsetX, sunY + offsetY, 'fireball');
+        
+        // Set calculated velocity
+        fireball.body.setVelocity(finalVelocityX, finalVelocityY);
+        fireball.body.setGravityY(0); // We'll handle gravity manually
         fireball.setScale(0.8);
         fireball.setDisplaySize(32, 32);
         
-        // Rotate fireball to match rain angle (45 degrees down-left)
-        fireball.setRotation(rainAngle);
+        // Rotate fireball to match trajectory
+        const angle = Math.atan2(finalVelocityY, finalVelocityX);
+        fireball.setRotation(angle);
     }
     
     checkCollisions() {
@@ -553,8 +593,8 @@ class GameScene extends Phaser.Scene {
             this.collectKey();
         }
         
-        // Gate entry
-        if (this.gateOpen && this.physics.overlap(this.player, this.gate)) {
+        // Gate entry - only works if player has the key
+        if (this.hasKey && this.gateOpen && this.physics.overlap(this.player, this.gate)) {
             this.completeLevel();
         }
         
@@ -564,11 +604,11 @@ class GameScene extends Phaser.Scene {
             
             if (distance < 40) {
                 if (this.isShielding && this.shieldHealth > 0) {
-                    // Shield blocks fireball
+                    // Shield is actively being used and has health - blocks fireball and damages shield
                     this.damageShield();
                     fireball.destroy();
                 } else if (!this.invulnerable) {
-                    // Player takes damage
+                    // Player is not shielding or shield is broken - takes health damage
                     this.damagePlayer();
                     fireball.destroy();
                 }
@@ -577,11 +617,9 @@ class GameScene extends Phaser.Scene {
     }
     
     collectGem(gem) {
-        // Restore shield health only
-        if (this.shieldHealth < 3) {
-            this.shieldHealth++;
-            this.updateHealthUI();
-        }
+        // Gems fully restore shield health
+        this.shieldHealth = this.maxShieldHealth;
+        this.updateHealthUI();
         
         // Add brief scale/fade animation using the gem sprite
         this.tweens.add({
@@ -594,7 +632,7 @@ class GameScene extends Phaser.Scene {
         });
         
         // Add visual effect
-        this.add.text(gem.x, gem.y - 30, '+Shield', {
+        this.add.text(gem.x, gem.y - 30, 'Shield Restored!', {
             fontSize: '16px',
             color: '#00ff00'
         }).setOrigin(0.5).setDepth(100);
@@ -615,10 +653,14 @@ class GameScene extends Phaser.Scene {
             }
         });
         
+        // Remove sun and stop fireballs when key is collected
+        this.removeSunAndFireballs();
+        
+        // Open the gate
         this.openGate();
         
         // Show message
-        this.add.text(960, 300, 'Key Collected!', {
+        this.add.text(960, 300, 'Key Collected! Reach the Gate!', {
             fontSize: '32px',
             color: '#ffff00'
         }).setOrigin(0.5).setDepth(100);
@@ -630,10 +672,29 @@ class GameScene extends Phaser.Scene {
         this.gate.setTexture('gateOpen');
     }
     
+    removeSunAndFireballs() {
+        // Make the sun vanish when key is collected
+        this.tweens.add({
+            targets: this.sun,
+            alpha: 0,
+            scaleX: 0,
+            scaleY: 0,
+            duration: 500,
+            onComplete: () => {
+                this.sun.setVisible(false);
+            }
+        });
+        
+        // Clear all existing fireballs
+        this.fireballs.clear(true, true);
+    }
+    
     damageShield() {
+        // Damage the shield when blocking a fireball
         this.shieldHealth--;
         this.updateHealthUI();
         
+        // Stop shielding if shield is broken
         if (this.shieldHealth <= 0) {
             this.isShielding = false;
         }
@@ -682,14 +743,42 @@ class GameScene extends Phaser.Scene {
     }
     
     respawnPlayer() {
-        // Reset player position to starting cloud
-        this.player.setPosition(this.lastCloudPosition.x, this.lastCloudPosition.y - 50);
+        // Reset player position to the first cloud (starting position)
+        // Place player on top of the first cloud at (200, 850)
+        this.player.setPosition(200, 820); // 820 = cloud y (850) - cloud height/2 (30) + 10 buffer
         this.player.body.setVelocity(0, 0);
         
-        // Reset health
-        this.shieldHealth = 0;
+        // Reset health and shield to full
+        this.shieldHealth = this.maxShieldHealth;
         this.playerHealth = 3;
         this.updateHealthUI();
+        
+        // Reset all cloud timers and make them solid again
+        this.clouds.forEach(cloud => {
+            cloud.disappearTimer = -1; // Reset to not activated
+            cloud.setAlpha(1); // Reset to full opacity
+            cloud.isSolid = true; // Make solid again
+        });
+        
+        // Reset game state if key was collected
+        if (this.hasKey) {
+            this.hasKey = false;
+            this.gateOpen = false;
+            this.gate.setTexture('gateClose');
+            
+            // Respawn the key
+            this.key = this.physics.add.sprite(800, 520, 'key');
+            this.key.setDisplaySize(32, 32);
+            this.key.body.setImmovable(true);
+            this.key.body.setGravityY(0);
+            this.key.floatDirection = 1;
+            this.key.originalY = 520;
+            
+            // Respawn the sun
+            this.sun.setVisible(true);
+            this.sun.setAlpha(1);
+            this.sun.setScale(0.8);
+        }
         
         // Clear fireballs
         this.fireballs.clear(true, true);
@@ -702,15 +791,8 @@ class GameScene extends Phaser.Scene {
     completeLevel() {
         this.levelComplete = true;
         
-        // Remove all fireballs
+        // Clear any remaining fireballs (should already be cleared)
         this.fireballs.clear(true, true);
-        
-        // Fade out sun
-        this.tweens.add({
-            targets: this.sun,
-            alpha: 0,
-            duration: 1000
-        });
         
         // Show completion message
         const completeText = this.add.text(960, 540, 'LEVEL COMPLETE', {
@@ -728,7 +810,7 @@ class GameScene extends Phaser.Scene {
     }
     
     updateHealthUI() {
-        // Update shield health display using exact assets
+        // Update shield health display based on shield health
         if (this.shieldHealth === 3) {
             this.shieldHealthDisplay.setTexture('shield3');
             this.shieldHealthDisplay.setVisible(true);
@@ -742,16 +824,14 @@ class GameScene extends Phaser.Scene {
             this.shieldHealthDisplay.setVisible(false);
         }
         
-        // Update player health display - only visible after shield breaks
-        if (this.shieldHealth === 0) {
-            this.playerHealthDisplay.setVisible(true);
-            if (this.playerHealth === 3) {
-                this.playerHealthDisplay.setTexture('health3');
-            } else if (this.playerHealth === 2) {
-                this.playerHealthDisplay.setTexture('health2');
-            } else if (this.playerHealth === 1) {
-                this.playerHealthDisplay.setTexture('health1');
-            }
+        // Player health display is always visible
+        this.playerHealthDisplay.setVisible(true);
+        if (this.playerHealth === 3) {
+            this.playerHealthDisplay.setTexture('health3');
+        } else if (this.playerHealth === 2) {
+            this.playerHealthDisplay.setTexture('health2');
+        } else if (this.playerHealth === 1) {
+            this.playerHealthDisplay.setTexture('health1');
         } else {
             this.playerHealthDisplay.setVisible(false);
         }
