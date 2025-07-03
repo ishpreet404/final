@@ -392,6 +392,13 @@ class GameScene extends Phaser.Scene {
             this.key.setDisplaySize(30, 30); // Increased size to 30x30
         }
         
+        // Reset sun visibility and properties
+        if (this.sun) {
+            this.sun.setVisible(true);
+            this.sun.setAlpha(1);
+            this.sun.setScale(0.8);
+        }
+        
         // Recreate gems if they were collected
         this.createGems();
         
@@ -931,11 +938,23 @@ class GameScene extends Phaser.Scene {
             ease: 'Power2'
         });
         
-        // Add visual effect
-        this.add.text(gem.x, gem.y - 30, 'Shield Restored!', {
+        // Add visual effect - create and auto-destroy after animation
+        const shieldText = this.add.text(gem.x, gem.y - 30, 'Shield Restored!', {
             fontSize: '16px',
             color: '#00ff00'
         }).setOrigin(0.5).setDepth(100);
+        
+        // Animate and destroy the text
+        this.tweens.add({
+            targets: shieldText,
+            y: gem.y - 60,
+            alpha: 0,
+            duration: 1500,
+            ease: 'Power2',
+            onComplete: () => {
+                shieldText.destroy();
+            }
+        });
     }
     
     collectKey() {
@@ -1030,7 +1049,7 @@ class GameScene extends Phaser.Scene {
         // Fade to black
         const blackScreen = this.add.rectangle(960, 540, 1920, 1080, 0x000000, 0);
         blackScreen.setDepth(1000);
-        
+
         this.tweens.add({
             targets: blackScreen,
             alpha: 1,
