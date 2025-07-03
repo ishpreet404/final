@@ -55,39 +55,39 @@ class GameScene extends Phaser.Scene {
     }
     
     preload() {
-        // Load all assets from the assets folder - using exact names
-        this.load.image('bgFull', 'assets/BG full.png');
-        this.load.image('blurredBG', 'assets/Blurred BG.png');
-        this.load.image('player', 'assets/Psyger-0.png');
-        this.load.image('sun', 'assets/Suhn.png');
-        this.load.image('fireball', 'assets/Fireball.png');
-        this.load.image('cloud1', 'assets/Cloud 1.png');
-        this.load.image('cloud2', 'assets/Cloud 2.png');
-        this.load.image('cloud3', 'assets/Cloud 3.png');
-        this.load.image('gem', 'assets/Gem.png');
-        this.load.image('key', 'assets/Key.png');
-        this.load.image('gateClose', 'assets/Gate close.png');
-        this.load.image('gateOpen', 'assets/Gate open.png');
-        this.load.image('shield', 'assets/Shield.png');
-        this.load.image('shieldButton', 'assets/Shield button.png');
+        // Load all assets from the public folder - using exact names
+        this.load.image('bgFull', 'BG full.png');
+        this.load.image('blurredBG', 'Blurred BG.png');
+        this.load.image('player', 'Psyger-0.png');
+        this.load.image('sun', 'Suhn.png');
+        this.load.image('fireball', 'Fireball.png');
+        this.load.image('cloud1', 'Cloud 1.png');
+        this.load.image('cloud2', 'Cloud 2.png');
+        this.load.image('cloud3', 'Cloud 3.png');
+        this.load.image('gem', 'Gem.png');
+        this.load.image('key', 'Key.png');
+        this.load.image('gateClose', 'Gate close.png');
+        this.load.image('gateOpen', 'Gate open.png');
+        this.load.image('shield', 'Shield.png');
+        this.load.image('shieldButton', 'Shield button.png');
         
         // UI Screen assets
-        this.load.image('gameInfo', 'assets/Game Info.png');
-        this.load.image('gameOver', 'assets/Game over.png');
-        this.load.image('levelCompleted', 'assets/Level completed.png');
+        this.load.image('gameInfo', 'Game Info.png');
+        this.load.image('gameOver', 'Game over.png');
+        this.load.image('levelCompleted', 'Level completed.png');
         
         // Health UI assets - exact names
-        this.load.image('health1', 'assets/Health 1.png');
-        this.load.image('health2', 'assets/health 2.png');
-        this.load.image('health3', 'assets/Health 3.png');
-        this.load.image('shield1', 'assets/Shield 1.png');
-        this.load.image('shield2', 'assets/Shield 2.png');
-        this.load.image('shield3', 'assets/Shield 3.png');
+        this.load.image('health1', 'Health 1.png');
+        this.load.image('health2', 'health 2.png');
+        this.load.image('health3', 'Health 3.png');
+        this.load.image('shield1', 'Shield 1.png');
+        this.load.image('shield2', 'Shield 2.png');
+        this.load.image('shield3', 'Shield 3.png');
         
         // Joystick assets
-        this.load.image('joystick1', 'assets/Joystick 1.png');
-        this.load.image('joystick2', 'assets/Joystick 2.png');
-        this.load.image('joystick3', 'assets/Joystick 3.png');
+        this.load.image('joystick1', 'Joystick 1.png');
+        this.load.image('joystick2', 'Joystick 2.png');
+        this.load.image('joystick3', 'Joystick 3.png');
     }
     
     create() {
