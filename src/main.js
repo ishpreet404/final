@@ -16,7 +16,8 @@ class GameScene extends Phaser.Scene {
         // UI elements
         this.joystick = null;
         this.shieldButton = null;
-        this.healthBars = null;
+        this.shieldDisplays = null;
+        this.healthDisplays = null;
         
         // Game mechanics
         this.playerHealth = 3; // Player dies after 3 unshielded hits
@@ -192,16 +193,23 @@ class GameScene extends Phaser.Scene {
     }
     
     createUI() {
-        // Create shield health display (top-left)
-        this.shieldHealthDisplay = this.add.image(20, 20, 'shield3');
-        this.shieldHealthDisplay.setOrigin(0, 0);
-        this.shieldHealthDisplay.setScale(0.8);
+        // Create individual shield displays (3 shields in a row)
+        this.shieldDisplays = [];
+        for (let i = 0; i < 3; i++) {
+            const shield = this.add.image(20 + (i * 35), 20, 'shield1');
+            shield.setOrigin(0, 0);
+            shield.setScale(0.6);
+            this.shieldDisplays.push(shield);
+        }
         
-        // Create player health display (below shield) - initially hidden
-        this.playerHealthDisplay = this.add.image(20, 80, 'health3');
-        this.playerHealthDisplay.setOrigin(0, 0);
-        this.playerHealthDisplay.setScale(0.8);
-        this.playerHealthDisplay.setVisible(false); // Only visible after shield breaks
+        // Create individual health displays (3 hearts in a row below shields)
+        this.healthDisplays = [];
+        for (let i = 0; i < 3; i++) {
+            const heart = this.add.image(20 + (i * 35), 70, 'health1');
+            heart.setOrigin(0, 0);
+            heart.setScale(0.6);
+            this.healthDisplays.push(heart);
+        }
         
         // Create joystick using joystick assets
         this.joystickBase = this.add.image(100, 980, 'joystick1');
@@ -810,30 +818,24 @@ class GameScene extends Phaser.Scene {
     }
     
     updateHealthUI() {
-        // Update shield health display based on shield health
-        if (this.shieldHealth === 3) {
-            this.shieldHealthDisplay.setTexture('shield3');
-            this.shieldHealthDisplay.setVisible(true);
-        } else if (this.shieldHealth === 2) {
-            this.shieldHealthDisplay.setTexture('shield2');
-            this.shieldHealthDisplay.setVisible(true);
-        } else if (this.shieldHealth === 1) {
-            this.shieldHealthDisplay.setTexture('shield1');
-            this.shieldHealthDisplay.setVisible(true);
-        } else {
-            this.shieldHealthDisplay.setVisible(false);
+        // Update individual shield displays - only show active shields
+        for (let i = 0; i < 3; i++) {
+            if (i < this.shieldHealth) {
+                this.shieldDisplays[i].setVisible(true);
+                this.shieldDisplays[i].setAlpha(1);
+            } else {
+                this.shieldDisplays[i].setVisible(false); // Hide depleted shields completely
+            }
         }
         
-        // Player health display is always visible
-        this.playerHealthDisplay.setVisible(true);
-        if (this.playerHealth === 3) {
-            this.playerHealthDisplay.setTexture('health3');
-        } else if (this.playerHealth === 2) {
-            this.playerHealthDisplay.setTexture('health2');
-        } else if (this.playerHealth === 1) {
-            this.playerHealthDisplay.setTexture('health1');
-        } else {
-            this.playerHealthDisplay.setVisible(false);
+        // Update individual health displays - only show active health
+        for (let i = 0; i < 3; i++) {
+            if (i < this.playerHealth) {
+                this.healthDisplays[i].setVisible(true);
+                this.healthDisplays[i].setAlpha(1);
+            } else {
+                this.healthDisplays[i].setVisible(false); // Hide lost health completely
+            }
         }
     }
 }
