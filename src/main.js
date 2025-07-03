@@ -4,6 +4,9 @@ class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
         
+        // Game states
+        this.gameState = 'START'; // 'START', 'PLAYING', 'GAME_OVER', 'LEVEL_COMPLETE', 'DYING'
+        
         // Game state
         this.player = null;
         this.sun = null;
@@ -18,6 +21,9 @@ class GameScene extends Phaser.Scene {
         this.shieldButton = null;
         this.shieldDisplays = null;
         this.healthDisplays = null;
+        this.startScreen = null;
+        this.gameOverScreen = null;
+        this.levelCompleteScreen = null;
         
         // Game mechanics
         this.playerHealth = 3; // Player dies after 3 unshielded hits
@@ -51,6 +57,7 @@ class GameScene extends Phaser.Scene {
     preload() {
         // Load all assets from the assets folder - using exact names
         this.load.image('bgFull', 'assets/BG full.png');
+        this.load.image('blurredBG', 'assets/Blurred BG.png');
         this.load.image('player', 'assets/Psyger-0.png');
         this.load.image('sun', 'assets/Suhn.png');
         this.load.image('fireball', 'assets/Fireball.png');
@@ -63,6 +70,11 @@ class GameScene extends Phaser.Scene {
         this.load.image('gateOpen', 'assets/Gate open.png');
         this.load.image('shield', 'assets/Shield.png');
         this.load.image('shieldButton', 'assets/Shield button.png');
+        
+        // UI Screen assets
+        this.load.image('gameInfo', 'assets/Game Info.png');
+        this.load.image('gameOver', 'assets/Game over.png');
+        this.load.image('levelCompleted', 'assets/Level completed.png');
         
         // Health UI assets - exact names
         this.load.image('health1', 'assets/Health 1.png');
@@ -82,9 +94,126 @@ class GameScene extends Phaser.Scene {
         // Create background using 'BG full' - stretch to cover entire 1920x1080 screen
         this.add.image(960, 540, 'bgFull').setDisplaySize(1920, 1080);
         
+        // Create start screen
+        this.createStartScreen();
+        
+        // Initialize game objects (but don't make them visible yet)
+        this.initializeGameObjects();
+        
+        // Create input handling
+        this.createInput();
+        
+        // Start with the start screen
+        this.showStartScreen();
+    }
+    
+    createStartScreen() {
+        // Create start screen with Game Info asset
+        this.startScreen = this.add.container(960, 540);
+        
+        // Add blurred background for start screen
+        const startBG = this.add.image(0, 0, 'blurredBG').setDisplaySize(1920, 1080);
+        
+        // Add game info image
+        const gameInfo = this.add.image(0, -100, 'gameInfo');
+        gameInfo.setScale(0.8);
+        
+        // Add start button text
+        const startText = this.add.text(0, 200, 'TAP TO START', {
+            fontSize: '48px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5);
+        
+        // Add pulsing animation to start text
+        this.tweens.add({
+            targets: startText,
+            alpha: 0.5,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
+        this.startScreen.add([startBG, gameInfo, startText]);
+        this.startScreen.setDepth(1000);
+    }
+    
+    createGameOverScreen() {
+        // Create game over screen with Game Over asset
+        this.gameOverScreen = this.add.container(960, 540);
+        
+        // Add blurred background
+        const gameOverBG = this.add.image(0, 0, 'blurredBG').setDisplaySize(1920, 1080);
+        
+        // Add game over image
+        const gameOverImage = this.add.image(0, -50, 'gameOver');
+        gameOverImage.setScale(0.8);
+        
+        // Add restart button text
+        const restartText = this.add.text(0, 150, 'TAP TO RESTART', {
+            fontSize: '36px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5);
+        
+        // Add pulsing animation
+        this.tweens.add({
+            targets: restartText,
+            alpha: 0.5,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
+        this.gameOverScreen.add([gameOverBG, gameOverImage, restartText]);
+        this.gameOverScreen.setDepth(1000);
+        this.gameOverScreen.setVisible(false);
+    }
+    
+    createLevelCompleteScreen() {
+        // Create level complete screen with Level Completed asset
+        this.levelCompleteScreen = this.add.container(960, 540);
+        
+        // Add blurred background
+        const completeBG = this.add.image(0, 0, 'blurredBG').setDisplaySize(1920, 1080);
+        
+        // Add level completed image
+        const levelCompleteImage = this.add.image(0, -50, 'levelCompleted');
+        levelCompleteImage.setScale(0.8);
+        
+        // Add next level button text
+        const nextText = this.add.text(0, 150, 'TAP FOR NEXT LEVEL', {
+            fontSize: '36px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5);
+        
+        // Add pulsing animation
+        this.tweens.add({
+            targets: nextText,
+            alpha: 0.5,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
+        this.levelCompleteScreen.add([completeBG, levelCompleteImage, nextText]);
+        this.levelCompleteScreen.setDepth(1000);
+        this.levelCompleteScreen.setVisible(false);
+    }
+    
+    initializeGameObjects() {
+        
         // Create sun enemy at top-right corner
         this.sun = this.add.image(1700, 100, 'sun');
         this.sun.setScale(0.8);
+        this.sun.setVisible(false); // Hidden initially
         
         // Create player at bottom-left cloud start position
         this.player = this.physics.add.sprite(200, 820, 'player');
@@ -94,6 +223,7 @@ class GameScene extends Phaser.Scene {
         this.player.body.setGravityY(this.GRAVITY);
         this.player.body.setMaxVelocityY(this.TERMINAL_VELOCITY);
         this.player.isGrounded = false;
+        this.player.setVisible(false); // Hidden initially
         
         // Create clouds with physics using exact positions and cloud types
         this.createClouds();
@@ -103,25 +233,24 @@ class GameScene extends Phaser.Scene {
         
         // Create key on center cloud - positioned above the center middle cloud
         this.key = this.physics.add.sprite(800, 520, 'key');
-        this.key.setDisplaySize(32, 32); // Increased size for better visibility
+        this.key.setDisplaySize(24, 24); // Decreased size from 32x32 to 24x24
         this.key.body.setImmovable(true);
         this.key.body.setGravityY(0);
         this.key.floatDirection = 1;
         this.key.originalY = 520;
+        this.key.setVisible(false); // Hidden initially
         
         // Create gate on final platform - topmost/rightmost position
         this.gate = this.physics.add.sprite(1500, 220, 'gateClose');
         this.gate.body.setImmovable(true);
         this.gate.body.setGravityY(0);
-        // Set collision box to be wider and at the base of the gate for better platform collision
-        this.gate.body.setSize(120, 40); // Width and height of collision box
-        this.gate.body.setOffset(20, 60); // Position collision box at the base
+        // Set collision box to be wider and positioned at the very base for better standing
+        this.gate.body.setSize(140, 20); // Wider and shorter collision box for better floor standing
+        this.gate.body.setOffset(10, 80); // Position collision box at the very bottom of the gate
+        this.gate.setVisible(false); // Hidden initially
         
-        // Create UI
+        // Create UI (hidden initially)
         this.createUI();
-        
-        // Create input handling
-        this.createInput();
         
         // Initialize fireballs group
         this.fireballs = this.physics.add.group();
@@ -130,6 +259,144 @@ class GameScene extends Phaser.Scene {
         this.shieldEffect = this.add.image(0, 0, 'shield');
         this.shieldEffect.setVisible(false);
         this.shieldEffect.setAlpha(0.7);
+    }
+    
+    showStartScreen() {
+        this.gameState = 'START';
+        this.startScreen.setVisible(true);
+        
+        // Hide all game elements
+        this.hideGameElements();
+    }
+    
+    showGameOverScreen() {
+        this.gameState = 'GAME_OVER';
+        if (!this.gameOverScreen) {
+            this.createGameOverScreen();
+        }
+        this.gameOverScreen.setVisible(true);
+        
+        // Hide all game elements
+        this.hideGameElements();
+    }
+    
+    showLevelCompleteScreen() {
+        this.gameState = 'LEVEL_COMPLETE';
+        if (!this.levelCompleteScreen) {
+            this.createLevelCompleteScreen();
+        }
+        this.levelCompleteScreen.setVisible(true);
+        
+        // Hide all game elements except background
+        this.hideGameElements();
+    }
+    
+    startGame() {
+        this.gameState = 'PLAYING';
+        
+        // Hide all screens
+        this.startScreen.setVisible(false);
+        if (this.gameOverScreen) this.gameOverScreen.setVisible(false);
+        if (this.levelCompleteScreen) this.levelCompleteScreen.setVisible(false);
+        
+        // Show all game elements
+        this.showGameElements();
+        
+        // Reset game state
+        this.resetGameState();
+    }
+    
+    hideGameElements() {
+        if (this.player) this.player.setVisible(false);
+        if (this.sun) this.sun.setVisible(false);
+        if (this.key) this.key.setVisible(false);
+        if (this.gate) this.gate.setVisible(false);
+        
+        // Hide clouds
+        this.clouds.forEach(cloud => cloud.setVisible(false));
+        
+        // Hide gems
+        this.gems.forEach(gem => gem.setVisible(false));
+        
+        // Hide UI
+        if (this.shieldDisplays) this.shieldDisplays.forEach(shield => shield.setVisible(false));
+        if (this.healthDisplays) this.healthDisplays.forEach(health => health.setVisible(false));
+        if (this.joystickBase) this.joystickBase.setVisible(false);
+        if (this.joystickKnob) this.joystickKnob.setVisible(false);
+        if (this.shieldButton) this.shieldButton.setVisible(false);
+    }
+    
+    showGameElements() {
+        if (this.player) this.player.setVisible(true);
+        if (this.sun) this.sun.setVisible(true);
+        if (this.key) this.key.setVisible(true);
+        if (this.gate) this.gate.setVisible(true);
+        
+        // Show clouds
+        this.clouds.forEach(cloud => cloud.setVisible(true));
+        
+        // Show gems
+        this.gems.forEach(gem => gem.setVisible(true));
+        
+        // Show UI
+        if (this.joystickBase) this.joystickBase.setVisible(true);
+        if (this.joystickKnob) this.joystickKnob.setVisible(true);
+        if (this.shieldButton) this.shieldButton.setVisible(true);
+        
+        // Update health UI to show current state
+        this.updateHealthUI();
+    }
+    
+    resetGameState() {
+        // Reset player position and stats
+        this.player.setPosition(200, 820);
+        this.player.body.setVelocity(0, 0);
+        this.playerHealth = 3;
+        this.shieldHealth = this.maxShieldHealth;
+        this.hasKey = false;
+        this.gateOpen = false;
+        this.levelComplete = false;
+        this.invulnerable = false;
+        this.isShielding = false;
+        
+        // Reset gate
+        this.gate.setTexture('gateClose');
+        
+        // Reset clouds
+        this.clouds.forEach(cloud => {
+            cloud.disappearTimer = -1;
+            cloud.setAlpha(1);
+            cloud.isSolid = true;
+        });
+        
+        // Clear fireballs
+        this.fireballs.clear(true, true);
+        
+        // Reset timers
+        this.fireballTimer = 0;
+        this.invulnerabilityTimer = 0;
+        
+        // Recreate key if it was destroyed
+        if (!this.key || !this.key.active) {
+            this.key = this.physics.add.sprite(800, 520, 'key');
+            this.key.setDisplaySize(24, 24); // Decreased size to match initial creation
+            this.key.body.setImmovable(true);
+            this.key.body.setGravityY(0);
+            this.key.floatDirection = 1;
+            this.key.originalY = 520;
+        } else {
+            // Reset key properties if it already exists
+            this.key.setPosition(800, 520);
+            this.key.setVisible(true);
+            this.key.setAlpha(1);
+            this.key.setDisplaySize(24, 24); // Use setDisplaySize instead of setScale to maintain consistent size
+        }
+        
+        // Recreate gems if they were collected
+        this.createGems();
+        
+        // Update UI
+        this.updateHealthUI();
     }
     
     createClouds() {
@@ -174,6 +441,14 @@ class GameScene extends Phaser.Scene {
     }
     
     createGems() {
+        // Clear any existing gems first
+        this.gems.forEach(gem => {
+            if (gem && gem.active) {
+                gem.destroy();
+            }
+        });
+        this.gems = [];
+        
         // Place gems on top of clouds - clean positioning
         const gemPositions = [
             { x: 450, y: 720 },  // On second cloud (450, 750)
@@ -215,8 +490,10 @@ class GameScene extends Phaser.Scene {
         this.joystickBase = this.add.image(100, 980, 'joystick1');
         this.joystickBase.setScale(0.8);
         this.joystickBase.setAlpha(0.7);
+        this.joystickBase.setVisible(false); // Hidden initially
         
         this.joystickKnob = this.add.circle(100, 980, 20, 0xffffff, 0.8);
+        this.joystickKnob.setVisible(false); // Hidden initially
         this.joystickCenter = { x: 100, y: 980 };
         
         // Create shield button
@@ -224,13 +501,29 @@ class GameScene extends Phaser.Scene {
         this.shieldButton.setScale(0.8);
         this.shieldButton.setInteractive();
         this.shieldButton.setAlpha(0.8);
+        this.shieldButton.setVisible(false); // Hidden initially
         
         this.updateHealthUI();
     }
     
     createInput() {
-        // Mouse/touch input for joystick
+        // Mouse/touch input for joystick and game state management
         this.input.on('pointerdown', (pointer) => {
+            // Handle different game states
+            if (this.gameState === 'START') {
+                this.startGame();
+                return;
+            } else if (this.gameState === 'GAME_OVER') {
+                this.startGame();
+                return;
+            } else if (this.gameState === 'LEVEL_COMPLETE') {
+                this.startGame(); // For now, restart the same level
+                return;
+            }
+            
+            // Only handle joystick/shield input during gameplay
+            if (this.gameState !== 'PLAYING') return;
+            
             const distance = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.joystickCenter.x, this.joystickCenter.y);
             if (distance <= 60) { // Adjusted for joystick asset size
                 this.joystickActive = true;
@@ -246,18 +539,20 @@ class GameScene extends Phaser.Scene {
         });
         
         this.input.on('pointermove', (pointer) => {
-            if (this.joystickActive) {
+            if (this.joystickActive && this.gameState === 'PLAYING') {
                 this.updateJoystick(pointer);
             }
         });
         
         this.input.on('pointerup', () => {
-            this.joystickActive = false;
-            this.joystickInput = { x: 0, y: 0 };
-            this.joystickKnob.setPosition(this.joystickCenter.x, this.joystickCenter.y);
-            
-            this.shieldPressed = false;
-            this.shieldButton.clearTint();
+            if (this.gameState === 'PLAYING') {
+                this.joystickActive = false;
+                this.joystickInput = { x: 0, y: 0 };
+                this.joystickKnob.setPosition(this.joystickCenter.x, this.joystickCenter.y);
+                
+                this.shieldPressed = false;
+                this.shieldButton.clearTint();
+            }
         });
         
         // Keyboard fallback
@@ -289,6 +584,9 @@ class GameScene extends Phaser.Scene {
     
     update(time, delta) {
         const deltaSeconds = delta / 1000;
+        
+        // Only update game logic during PLAYING state
+        if (this.gameState !== 'PLAYING') return;
         
         if (this.levelComplete) return;
         
@@ -330,7 +628,7 @@ class GameScene extends Phaser.Scene {
         // Check collisions
         this.checkCollisions();
         
-        // Check death conditions
+        // Check death conditions (this should work now)
         this.checkDeath();
         
         // Rotate sun
@@ -449,14 +747,8 @@ class GameScene extends Phaser.Scene {
             }
         }
         
-        // Check collision with ground (bottom of screen area)
-        if (this.player.y >= 1000 && this.player.body.velocity.y >= 0) {
-            this.player.isGrounded = true;
-            this.player.y = 1000;
-            this.player.body.setVelocityY(0);
-            // Update last cloud position when touching ground
-            this.lastCloudPosition = { x: this.player.x, y: 1000 };
-        }
+        // Remove the ground collision - let player fall and trigger game over
+        // If player falls below screen, it will be caught by checkDeath()
     }
     
     updateGems(deltaSeconds) {
@@ -722,13 +1014,19 @@ class GameScene extends Phaser.Scene {
     }
     
     checkDeath() {
-        // Check if player fell off screen
-        if (this.player.y > 1180) {
+        // Check if player fell off screen - trigger game over earlier
+        if (this.player.y > 1100) { // Trigger earlier at 1100 instead of 1180
             this.playerDeath();
         }
     }
     
     playerDeath() {
+        // Prevent multiple death triggers
+        if (this.gameState !== 'PLAYING') return;
+        
+        // Change game state immediately to prevent multiple calls
+        this.gameState = 'DYING';
+        
         // Fade to black
         const blackScreen = this.add.rectangle(960, 540, 1920, 1080, 0x000000, 0);
         blackScreen.setDepth(1000);
@@ -738,14 +1036,8 @@ class GameScene extends Phaser.Scene {
             alpha: 1,
             duration: 300,
             onComplete: () => {
-                this.respawnPlayer();
-                
-                this.tweens.add({
-                    targets: blackScreen,
-                    alpha: 0,
-                    duration: 300,
-                    onComplete: () => blackScreen.destroy()
-                });
+                blackScreen.destroy();
+                this.showGameOverScreen();
             }
         });
     }
@@ -774,13 +1066,15 @@ class GameScene extends Phaser.Scene {
             this.gateOpen = false;
             this.gate.setTexture('gateClose');
             
-            // Respawn the key
-            this.key = this.physics.add.sprite(800, 520, 'key');
-            this.key.setDisplaySize(32, 32);
-            this.key.body.setImmovable(true);
-            this.key.body.setGravityY(0);
-            this.key.floatDirection = 1;
-            this.key.originalY = 520;
+            // Respawn the key only if it doesn't exist or was destroyed
+            if (!this.key || !this.key.active) {
+                this.key = this.physics.add.sprite(800, 520, 'key');
+                this.key.setDisplaySize(24, 24); // Decreased size to match other instances
+                this.key.body.setImmovable(true);
+                this.key.body.setGravityY(0);
+                this.key.floatDirection = 1;
+                this.key.originalY = 520;
+            }
             
             // Respawn the sun
             this.sun.setVisible(true);
@@ -802,18 +1096,9 @@ class GameScene extends Phaser.Scene {
         // Clear any remaining fireballs (should already be cleared)
         this.fireballs.clear(true, true);
         
-        // Show completion message
-        const completeText = this.add.text(960, 540, 'LEVEL COMPLETE', {
-            fontSize: '48px',
-            color: '#ffff00',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setDepth(100);
-        
-        // Transition after 3 seconds
-        this.time.delayedCall(3000, () => {
-            // Reset game or go to next level
-            this.scene.restart();
+        // Show level complete screen after a brief delay
+        this.time.delayedCall(1000, () => {
+            this.showLevelCompleteScreen();
         });
     }
     
