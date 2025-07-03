@@ -38,7 +38,7 @@ class GameScene extends Phaser.Scene {
         
         // Timers
         this.fireballTimer = 0;
-        this.fireballInterval = 0.6; // Increased spawn rate from 0.8 to 0.6 seconds for more varied angles
+        this.fireballInterval = 0.4; // Increased difficulty - faster fireball spawn rate
         this.invulnerabilityTimer = 0;
         
         // Input
@@ -231,17 +231,17 @@ class GameScene extends Phaser.Scene {
         // Create gems on specific clouds
         this.createGems();
         
-        // Create key on center cloud - positioned above the center middle cloud
-        this.key = this.physics.add.sprite(800, 520, 'key');
-        this.key.setDisplaySize(24, 24); // Decreased size from 32x32 to 24x24
+        // Create key on second-to-last cloud - positioned above the seventh cloud
+        this.key = this.physics.add.sprite(1350, 250, 'key');
+        this.key.setDisplaySize(30, 30); // Increased size to 30x30
         this.key.body.setImmovable(true);
         this.key.body.setGravityY(0);
         this.key.floatDirection = 1;
-        this.key.originalY = 520;
+        this.key.originalY = 250;
         this.key.setVisible(false); // Hidden initially
         
-        // Create gate on final platform - topmost/rightmost position
-        this.gate = this.physics.add.sprite(1500, 220, 'gateClose');
+        // Create gate on final platform - moved further to bottom right
+        this.gate = this.physics.add.sprite(1570, 310, 'gateClose');
         this.gate.body.setImmovable(true);
         this.gate.body.setGravityY(0);
         // Set collision box to be wider and positioned at the very base for better standing
@@ -378,18 +378,18 @@ class GameScene extends Phaser.Scene {
         
         // Recreate key if it was destroyed
         if (!this.key || !this.key.active) {
-            this.key = this.physics.add.sprite(800, 520, 'key');
-            this.key.setDisplaySize(24, 24); // Decreased size to match initial creation
+            this.key = this.physics.add.sprite(1350, 250, 'key');
+            this.key.setDisplaySize(30, 30); // Increased size to 30x30
             this.key.body.setImmovable(true);
             this.key.body.setGravityY(0);
             this.key.floatDirection = 1;
-            this.key.originalY = 520;
+            this.key.originalY = 250;
         } else {
             // Reset key properties if it already exists
-            this.key.setPosition(800, 520);
+            this.key.setPosition(1350, 250);
             this.key.setVisible(true);
             this.key.setAlpha(1);
-            this.key.setDisplaySize(24, 24); // Use setDisplaySize instead of setScale to maintain consistent size
+            this.key.setDisplaySize(30, 30); // Increased size to 30x30
         }
         
         // Recreate gems if they were collected
@@ -1068,12 +1068,12 @@ class GameScene extends Phaser.Scene {
             
             // Respawn the key only if it doesn't exist or was destroyed
             if (!this.key || !this.key.active) {
-                this.key = this.physics.add.sprite(800, 520, 'key');
-                this.key.setDisplaySize(24, 24); // Decreased size to match other instances
+                this.key = this.physics.add.sprite(1350, 250, 'key');
+                this.key.setDisplaySize(30, 30); // Increased size to 30x30
                 this.key.body.setImmovable(true);
                 this.key.body.setGravityY(0);
                 this.key.floatDirection = 1;
-                this.key.originalY = 520;
+                this.key.originalY = 250;
             }
             
             // Respawn the sun
